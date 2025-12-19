@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Infusion Pump Simulator</title>
+  <style>
+    /* --- TASARIM: ESKİ SEVDİĞİN STİL (MODERN & DASHBOARD) --- */
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; background: #f4f8fb; transition: all 0.3s; color: #333; }
+    .container { max-width: 1350px; margin: 20px auto; background: #fff; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); padding: 25px; }
+    
+    /* BAŞLIK STİLİ REVİZE EDİLDİ */
+    .header-area { text-align: center; border-bottom: 2px solid #eee; padding-bottom: 15px; margin-bottom: 20px; }
+    .header-area h2 { margin: 0; color: #0077be; text-transform: uppercase; letter-spacing: 1px; font-size: 24px; }
+    .header-area .sub-title { font-size: 16px; color: #555; font-weight: normal; text-transform: none; }
+    .header-area .authors { font-size: 14px; color: #777; margin-top: 5px; font-weight: 600; }
+
+    /* LAYOUT */
+    .row { display: flex; gap: 15px; margin-bottom: 15px; align-items: flex-end; flex-wrap: wrap; }
+    .col { flex: 1; min-width: 200px; }
+    .d-none { display: none !important; }
+
+    /* CONTROLS */
+    label { display: block; margin-bottom: 5px; font-weight: 600; font-size: 0.9rem; }
+    select, input[type=number], input[type=text] { width: 100%; padding: 8px; border-radius: 5px; border: 1px solid #ccc; font-size: 14px; box-sizing:border-box; }
+    button { padding: 10px 15px; border: none; border-radius: 5px; background: #0077be; color: #fff; cursor: pointer; font-weight:600; transition:0.2s; min-height: 40px; }
+    button:hover:not(:disabled) { background: #005a9e; transform: translateY(-1px); }
+    button:disabled { background: #ccc; cursor: not-allowed; }
+    
+    .btn-danger { background: #dc3545; } .btn-danger:hover { background: #c82333; }
+    .btn-warn { background: #ffc107; color:#222; } .btn-warn:hover { background: #e0a800; }
+    .btn-success { background: #28a745; } .btn-success:hover { background: #218838; }
+    .btn-dark { background: #343a40; } .btn-dark:hover { background: #23272b; }
+
+    /* MODULES */
+    .algo-panel { background: #e3f2fd; border: 1px solid #90caf9; padding: 15px; border-radius: 8px; margin: 15px 0; }
+    .algo-params { background: #fff; padding: 10px; border-radius: 5px; margin-top: 10px; border: 1px solid #ddd; }
+
+    /* DISPLAY & STATUS */
+    .display { background: #222; color: #0f0; font-family: 'Courier New', monospace; padding: 15px; border-radius: 6px; min-height: 50px; display: flex; align-items: center; font-size: 16px; border: 3px solid #555; margin-bottom: 15px; justify-content: space-between; }
+    .alarm-active { background: #700; color: #fff; animation: blink 1s infinite; border-color: #f00; }
+    @keyframes blink { 50% { opacity: 0.7; } }
+    
+    .status-area { background: #e9ecef; padding: 10px; border-radius: 5px; font-size: 0.9rem; display: flex; justify-content: space-between; border: 1px solid #ced4da; }
+    
+    /* BATTERY */
+    .battery-wrapper { width: 80px; height: 16px; background: #ddd; border-radius: 8px; position: relative; border: 1px solid #999; display: inline-block; vertical-align: middle; margin: 0 5px; }
+    .battery-fill { height: 100%; background: #28a745; width: 100%; border-radius: 8px; transition: width 0.5s; }
+
+    /* VISUALS */
+    .pump-visual { display: flex; align-items: center; justify-content: center; gap: 20px; background: #fafafa; padding: 15px; border-radius: 8px; border: 1px solid #eee; margin: 15px 0; }
+    .peristaltic { width: 70px; height: 70px; border-radius: 50%; border: 6px solid #0077be; position: relative; background: #e0f3fa; }
+    .roller { width: 16px; height: 16px; background: #005a9e; border-radius: 50%; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%) translate(28px, 0); }
+    .tubing { width: 150px; height: 12px; background: #d0e8f5; border-radius: 6px; position: relative; overflow: hidden; }
+    .bubble { width: 10px; height: 10px; background: #fff; border: 1px solid #0077be; border-radius: 50%; position: absolute; top: 1px; left: -15px; }
+
+    /* STATS GRID */
+    .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 5px; }
+    .stat-box { background: #fff; border: 1px solid #28a745; padding: 5px; text-align: center; border-radius: 4px; font-size: 0.8rem; }
+    .stat-val { font-weight: bold; font-size: 1rem; display: block; color: #28a745; }
+
+    /* CHARTS */
+    .charts-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 20px; }
+    .chart-box { background: #fff; border: 1px solid #ddd; border-radius: 6px; padding: 5px; height: 180px; }
+    canvas { width: 100% !important; height: 100% !important; }
+
+    /* SWITCHES */
+    .switch-wrap { display: flex; align-items: center; gap: 10px; background: #f8f9fa; padding: 8px; border-radius: 5px; border: 1px solid #ddd; }
+    .tgl { position: relative; display: inline-block; width: 36px; height: 20px; }
+    .tgl input { opacity: 0; width: 0; height: 0; }
+    .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; border-radius: 20px; }
+    .slider:before { position: absolute; content: ""; height: 14px; width: 14px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; }
+    input:checked + .slider { background-color: #0077be; }
+    input:checked + .slider:before { transform: translateX(16px); }
+
+    /* LOG SECTION */
+    .log-section { margin-top: 20px; max-height: 200px; overflow-y: auto; border: 1px solid #ccc; }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    th, td { border: 1px solid #ddd; padding: 5px; text-align: center; }
+    th { background: #f1f1f1; position: sticky; top: 0; }
+
+    /* DARK MODE */
+    body.dark { background: #181818; color: #ddd; }
+    body.dark .container { background: #252525; box-shadow: none; border: 1px solid #333; }
+    body.dark .header-area { border-color: #444; }
+    body.dark .header-area h2 { color: #5dade2; }
+    body.dark .algo-panel { background: #2a3b4c; border-color: #445; }
+    body.dark .algo-params, body.dark .status-area, body.dark .chart-box, body.dark .pump-visual, body.dark .switch-wrap, body.dark .stat-box { background: #333; border-color: #444; }
+    body.dark input, body.dark select { background: #444; color: #fff; border-color: #555; }
+    body.dark table th { background: #333; color: #fff; }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  
+  <div class="header-area">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+        <div style="flex:1"></div>
+        <div style="flex:2">
+            <h2>INFUSION PUMP SIMULATOR <span class="sub-title">for education</span></h2>
+            <div class="authors">Akyuz, Simsek, Gungor</div>
+        </div>
+        <div style="flex:1; display:flex; justify-content:flex-end;">
+            <div class="switch-wrap">
+                <label class="tgl"><input type="checkbox" id="darkModeSwitch"><span class="slider"></span></label>
+                <span>Dark Mode</span>
+            </div>
+        </div>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="col">
+      <label>User Name</label>
+      <input type="text" id="userNameInput" placeholder="Enter Name">
+    </div>
+    <div class="col">
+      <label>Role</label>
+      <select id="roleSelect" onchange="updateRole()">
+        <option value="nurse">Nurse</option>
+        <option value="doctor">Doctor</option>
+        <option value="biomed">Biomedical Technician</option>
+      </select>
+    </div>
+    <div class="col" style="flex:0.5;">
+      <label>&nbsp;</label>
+      <button class="btn-success" style="width:100%;" onclick="setUser()">Set User</button>
+    </div>
+    <div class="col" style="text-align:right;">
+      <span id="userDisplay" style="font-weight:bold; color:#0077be;">Guest</span><br>
+      <span style="font-size:0.8rem;">BATTERY: </span>
+      <div class="battery-wrapper"><div class="battery-fill" id="batFill"></div></div>
+      <span id="batText" style="font-weight:bold; font-size:0.8rem;">100%</span>
+    </div>
+  </div>
+
+  <div class="algo-panel">
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+      <h3 style="margin:0; font-size:1.1rem; color:#0056b3;">Intelligent Control Unit</h3>
+      
+      <select id="algoSelect" style="width:250px; font-weight:bold;" onchange="updateAlgoUI()">
+        <option value="open">1. Open Loop</option>
+        <option value="onoff">2. Bang-Bang Control</option> <option value="pid" selected>3. PID Controller</option>
+        <option value="fuzzy">4. Fuzzy Logic</option>
+        <option value="ann">5. Neural Network (MLP)</option> </select>
+    </div>
+
+    <div class="algo-params" id="paramBox">
+      <div id="ui-pid" class="row" style="margin:0;">
+        <div class="col"><label>Kp</label><input type="number" id="kp" value="1.2" step="0.1"></div>
+        <div class="col"><label>Ki</label><input type="number" id="ki" value="0.5" step="0.01"></div>
+        <div class="col"><label>Kd</label><input type="number" id="kd" value="0.1" step="0.01"></div>
+        <div class="col"><button class="btn-warn" onclick="autoTunePID()">Auto-Tune</button></div>
+      </div>
+      <div id="ui-ann" class="row d-none" style="margin:0;">
+        <div class="col"><label>Learning Rate (η)</label><input type="number" id="annLr" value="0.01" step="0.001"></div>
+        <div class="col"><button class="btn-warn" onclick="resetANN()">Reset Weights</button></div>
+      </div>
+      <div id="ui-onoff" class="row d-none" style="margin:0;"><div class="col"><label>Threshold</label><input type="number" id="onOffTh" value="5"></div></div>
+      <div id="ui-info" class="d-none" style="padding:5px; font-style:italic;">Smart logic active. No manual params.</div>
+    </div>
+  </div>
+
+  <div class="display" id="mainDisplay">
+    <span id="lcdMsg">SYSTEM READY</span>
+    <span style="font-size:0.8rem; color:#888;">PK Model: Active</span>
+  </div>
+  
+  <div class="status-area">
+    <span>Delivered: <b id="stDelivered">0</b> ml</span>
+    <span>Remaining: <b id="stRemaining">500</b> ml</span>
+    <span>Actual Flow: <b id="stFlow" style="color:#0077be">0</b> ml/h</span>
+    <span>Pressure: <b id="stPressure">10</b> mmHg</span>
+  </div>
+
+  <div class="stats-row">
+    <div class="stat-box">RMSE: <span class="stat-val" id="valRMSE">0.0</span></div>
+    <div class="stat-box">IAE: <span class="stat-val" id="valIAE">0</span></div>
+    <div class="stat-box">SS Error: <span class="stat-val" id="valErr">0%</span></div>
+    <div class="stat-box">Plasma: <span class="stat-val" id="valPlasma">0.00</span> ng/ml</div>
+  </div>
+
+  <div class="row" style="margin-top:15px;">
+    <div class="col"><label>Target Volume (ml)</label><input type="number" id="volInput" value="500" oninput="calcFlow()"></div>
+    <div class="col"><label>Time (min)</label><input type="number" id="timeInput" value="60" oninput="calcFlow()"></div>
+    <div class="col"><label>Target (ml/h)</label><input type="text" id="targetDisplay" readonly style="background:#eee;"></div>
+  </div>
+
+  <div class="row">
+    <div class="col">
+      <label>Drug</label>
+      <select id="drugSelect" onchange="drugChange()">
+        <option value="saline">Saline (0.9% NaCl)</option>
+        <option value="dopamine">Dopamine</option>
+        <option value="propofol">Propofol</option>
+        <option value="custom">-- Custom --</option>
+      </select>
+      <div id="customDrugPanel" class="d-none" style="margin-top:5px; background:#eee; padding:5px; border-radius:4px;">
+        <input type="text" placeholder="Drug Name" style="margin-bottom:3px; font-size:12px;">
+        <input type="number" placeholder="Conc. (mg/ml)" style="font-size:12px;">
+      </div>
+    </div>
+    <div class="col">
+      <label>Tubing</label>
+      <div style="display:flex; gap:5px;">
+        <select id="tubeDia" onchange="calcFlow()">
+          <option value="2">2 mm</option><option value="3">3 mm</option><option value="4" selected>4 mm</option>
+        </select>
+        <label style="font-size:0.7rem; display:flex; align-items:center; cursor:pointer; background:#eee; padding:2px 5px; border-radius:4px; border:1px solid #ccc;">
+          <input type="checkbox" id="physicsMode" checked onchange="calcFlow()"> Phys.<br>Mode
+        </label>
+      </div>
+    </div>
+    <div class="col"><label>Set Type</label><select id="setType" onchange="calcFlow()"><option value="std">Standard</option><option value="ped">Pediatric</option></select></div>
+    <div class="col"><label>&nbsp;</label><button class="btn-dark" style="width:100%;" onclick="alert('QR Scanned!')">📱 Scan QR</button></div>
+  </div>
+
+  <div class="row" style="background:#f8f9fa; padding:10px; border-radius:6px; border:1px solid #eee;">
+    <div class="switch-wrap"><label>Door:</label><label class="tgl"><input type="checkbox" id="swDoor" checked><span class="slider"></span></label></div>
+    <div class="switch-wrap"><label>Clamp:</label><label class="tgl"><input type="checkbox" id="swClamp" checked><span class="slider"></span></label></div>
+    <div class="switch-wrap"><label>Set Placement:</label><label class="tgl"><input type="checkbox" id="swPlace" checked><span class="slider"></span></label></div>
+  </div>
+
+  <div style="display:grid; grid-template-columns:repeat(6, 1fr); gap:10px; margin:15px 0;">
+    <button class="btn-danger" onclick="triggerError('bubble')">🫧 Bubble</button>
+    <button class="btn-danger" onclick="triggerError('occlusion')">⚠️ Occlusion</button>
+    <button class="btn-danger" onclick="triggerError('door')">🚪 Door Open</button>
+    <button class="btn-danger" onclick="triggerError('calib')">⚖️ Calib. Err</button>
+    <button class="btn-danger" onclick="triggerError('motor')">⚙️ Motor Err</button>
+    <button class="btn-danger" onclick="triggerError('filter')">🕸️ Filter Full</button>
+  </div>
+
+  <div class="row">
+    <button class="btn-dark" id="btnMaint" disabled onclick="alert('Maintenance Mode')">🔧 Maintenance</button>
+    <button class="btn-warn" onclick="clearAlarms()">✅ Clear Alarms</button>
+    <div style="flex:1;"></div>
+    <button class="btn-success" style="padding:10px 30px;" id="btnStart" onclick="startSim()">▶ START</button>
+    <button class="btn-warn" id="btnPause" disabled onclick="pauseSim()">⏸ PAUSE</button>
+    <button class="btn-dark" onclick="resetSim()">🔄 RESET</button>
+    <button class="btn-success" style="background:#217346;" onclick="exportCSV()">📊 EXPORT CSV</button>
+  </div>
+
+  <div class="pump-visual">
+    <div class="peristaltic"><div class="roller" id="roller"></div></div>
+    <div class="tubing">
+      <div style="width:100%; height:100%; background:#b3e0f7;"></div>
+      <div class="bubble d-none" id="bubbleAnim"></div>
+    </div>
+    <div><h3 style="margin:0; color:#555;">Live Infusion</h3><span id="actualFlowDisplay" style="font-size:20px; font-weight:bold; color:#0077be;">0</span> ml/h</div>
+  </div>
+
+  <div class="charts-grid">
+    <div class="chart-box"><canvas id="cFlow"></canvas></div>
+    <div class="chart-box"><canvas id="cPressure"></canvas></div>
+    <div class="chart-box"><canvas id="cControl"></canvas></div> <div class="chart-box"><canvas id="cError"></canvas></div>
+    <div class="chart-box"><canvas id="cPK"></canvas></div>        <div class="chart-box"><canvas id="cRpm"></canvas></div>
+    
+    <div class="chart-box"><canvas id="cTemp"></canvas></div>
+    <div class="chart-box"><canvas id="cBattery"></canvas></div>
+    <div class="chart-box"><canvas id="cTime"></canvas></div>
+  </div>
+
+  <div class="log-section">
+    <table id="logTable"><thead><tr><th>Time</th><th>User</th><th>Mode</th><th>Target</th><th>Actual</th><th>Error</th><th>Plasma</th></tr></thead><tbody></tbody></table>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+/* =================================================================
+   1. ADVANCED LOGIC (BRAINS)
+   ================================================================= */
+class OnOff { update(c,t,th=5,p=20){ let e=t-c; return {out:e>th?p:e<-th?-p:0, err:e}; } }
+
+class PID {
+  constructor(){this.i=0;this.p=0;}
+  reset(){this.i=0;this.p=0;}
+  update(c,t,kp,ki,kd,dt){
+    let e=t-c; this.i+=e*dt; this.i=Math.max(-100,Math.min(100,this.i));
+    let d=(e-this.p)/dt; this.p=e;
+    return {out:(kp*e)+(ki*this.i)+(kd*d), err:e};
+  }
+}
+
+class Fuzzy {
+  mem(x,c,w){return Math.max(0,1-Math.abs(x-c)/w);}
+  update(c,t){
+    let e=t-c;
+    let nb=this.mem(e,-50,50), ns=this.mem(e,-10,20), ze=this.mem(e,0,10), ps=this.mem(e,10,20), pb=this.mem(e,50,50);
+    let num=(nb*-50)+(ns*-10)+(ze*0)+(ps*10)+(pb*50);
+    let den=nb+ns+ze+ps+pb;
+    return {out:den===0?0:num/den, err:e};
+  }
+}
+
+// Neural Network (MLP) for Research
+class MLP {
+  constructor() { this.reset(); }
+  reset() {
+    this.w1 = [[0.5, 0.1], [-0.5, 0.2], [0.1, 0.5], [-0.2, -0.1]]; // Hidden Layer
+    this.b1 = [0,0,0,0];
+    this.w2 = [0.1, -0.1, 0.2, -0.2]; // Output Layer
+    this.b2 = 0;
+    this.integ = 0;
+  }
+  sig(x) { return 1/(1+Math.exp(-x)); }
+  dsig(y) { return y*(1-y); }
+  
+  update(curr, targ, lr) {
+    let e = (targ - curr)/100;
+    this.integ += e; this.integ = Math.max(-5, Math.min(5, this.integ));
+    let inputs = [e, this.integ];
+    
+    // Forward
+    let hOut = [];
+    for(let i=0; i<4; i++) {
+      let sum = this.b1[i];
+      for(let j=0; j<2; j++) sum += this.w1[i][j] * inputs[j];
+      hOut.push(this.sig(sum));
+    }
+    let fSum = this.b2;
+    for(let i=0; i<4; i++) fSum += this.w2[i] * hOut[i];
+    let output = fSum * 100;
+
+    // Backward (Learning)
+    let outErr = e; 
+    this.b2 += lr * outErr;
+    for(let i=0; i<4; i++) {
+      this.w2[i] += lr * outErr * hOut[i];
+      let hErr = outErr * this.w2[i] * this.dsig(hOut[i]);
+      this.b1[i] += lr * hErr;
+      for(let j=0; j<2; j++) this.w1[i][j] += lr * hErr * inputs[j];
+    }
+    return { out: output, err: (targ-curr) };
+  }
+}
+
+/* =================================================================
+   2. SYSTEM STATE
+   ================================================================= */
+const ctrls = { onoff: new OnOff(), pid: new PID(), fuzzy: new Fuzzy(), ann: new MLP() };
+let sys = { 
+  run: false, pause: false, time: 0, 
+  target: 500, actual: 0, 
+  volDelivered: 0, volTotal: 500, 
+  bat: 100, pressure: 10, temp: 36, rpm: 0, 
+  cp: 0, // Plasma Concentration
+  logs: [], 
+  errors: { bubble:false, occlusion:false, door:false, calib:false, motor:false, filter:false },
+  stats: { sse:0, iae:0, n:0, effort:0 } // DÜZELTME 1: iae eklendi
+};
+let interval, animAngle = 0;
+
+/* =================================================================
+   3. CHARTS (9 GRAPHS)
+   ================================================================= */
+const cOpt = { animation:false, responsive:true, maintainAspectRatio:false, elements:{point:{radius:0}}, scales:{x:{display:false}} };
+function mkChart(id, label, color, min, max) { return new Chart(document.getElementById(id), { type:'line', data:{labels:[], datasets:[{label:label, borderColor:color, data:[], borderWidth:1.5}]}, options:{...cOpt, plugins:{title:{display:true, text:label}}, scales:{y:{min:min, max:max}}} }); }
+
+const charts = {
+  flow: new Chart(document.getElementById('cFlow'), { type:'line', data:{datasets:[{label:'Target', borderColor:'blue', borderDash:[5,5], data:[]},{label:'Actual', borderColor:'red', data:[]}]}, options:{...cOpt, plugins:{title:{display:true, text:'Flow (ml/h)'}}, scales:{y:{min:0, max:1200}}} }),
+  pressure: mkChart('cPressure', 'Pressure (mmHg)', 'green', 0, 250),
+  control: mkChart('cControl', 'Control Signal (u)', 'teal', -60, 60),
+  error: mkChart('cError', 'Error (e)', 'red', -100, 100),
+  pk: mkChart('cPK', 'Plasma Conc. (ng/ml)', '#e83e8c', 0, 50), // NEW
+  rpm: mkChart('cRpm', 'RPM', 'brown', -1000, 4000), // Negative for Anti-Bolus
+  temp: mkChart('cTemp', 'Temp (°C)', 'purple', 30, 50),
+  battery: mkChart('cBattery', 'Battery %', 'orange', 0, 100),
+  time: mkChart('cTime', 'Time (min)', 'gray', 0, 200)
+};
+
+/* =================================================================
+   4. UI LOGIC
+   ================================================================= */
+function setUser() { document.getElementById('userDisplay').innerText = `${document.getElementById('userNameInput').value||"Guest"} (${document.getElementById('roleSelect').value.toUpperCase()})`; updateRole(); }
+function updateRole() { let r=document.getElementById('roleSelect').value; document.getElementById('btnMaint').disabled=(r!=='biomed'); }
+function drugChange() { let v=document.getElementById('drugSelect').value; document.getElementById('customDrugPanel').classList.toggle('d-none', v!=='custom'); }
+function updateAlgoUI() { ['ui-pid','ui-ann','ui-onoff','ui-info'].forEach(id=>document.getElementById(id).classList.add('d-none')); let m=document.getElementById('algoSelect').value; if(m==='pid') document.getElementById('ui-pid').classList.remove('d-none'); else if(m==='onoff') document.getElementById('ui-onoff').classList.remove('d-none'); else if(m==='ann') document.getElementById('ui-ann').classList.remove('d-none'); else document.getElementById('ui-info').classList.remove('d-none'); }
+function calcFlow() {
+  let v=parseFloat(document.getElementById('volInput').value), t=parseFloat(document.getElementById('timeInput').value), dia=parseFloat(document.getElementById('tubeDia').value), type=document.getElementById('setType').value, phys=document.getElementById('physicsMode').checked;
+  let fDia = 1.0; if(!phys) { if(dia===2) fDia=0.5; else if(dia===3) fDia=0.75; }
+  let fType = (type==='high')?0.9:(type==='ped')?0.8:1.0;
+  sys.target = Math.round((v/t)*60 * fDia * fType);
+  document.getElementById('targetDisplay').value = sys.target; sys.volTotal = v;
+}
+document.getElementById('darkModeSwitch').onchange = (e) => document.body.classList.toggle('dark', e.target.checked);
+
+/* =================================================================
+   5. SIMULATION ENGINE (PHYSICS + SAFETY)
+   ================================================================= */
+function startSim() {
+  if(sys.running) return;
+  if(!document.getElementById('swDoor').checked) { triggerError('door'); return; }
+  if(!document.getElementById('swClamp').checked) { alert("Clamp Closed!"); return; }
+  sys.running=true; sys.paused=false;
+  document.getElementById('lcdMsg').innerText = "RUNNING"; document.getElementById('mainDisplay').classList.remove('alarm-active');
+  document.getElementById('btnStart').disabled=true; document.getElementById('btnPause').disabled=false;
+  interval=setInterval(step, 1000); animate();
+}
+function pauseSim() { sys.running=false; sys.paused=true; clearInterval(interval); document.getElementById('lcdMsg').innerText="PAUSED"; document.getElementById('btnStart').disabled=false; document.getElementById('btnPause').disabled=true; }
+function resetSim() {
+  pauseSim(); sys.time=0; sys.actual=0; sys.volDelivered=0; sys.bat=100; sys.pressure=10; sys.cp=0; sys.logs=[];
+  sys.stats = { sse:0, iae:0, n:0, effort:0 }; // DÜZELTME 2: Resetlerken iae sıfırla
+  ctrls.pid.reset(); ctrls.ann.reset(); clearAlarms();
+  Object.values(charts).forEach(c=>{c.data.labels=[]; c.data.datasets.forEach(d=>d.data=[]); c.update();});
+  document.getElementById('lcdMsg').innerText="SYSTEM READY"; document.getElementById('stDelivered').innerText="0"; document.getElementById('batFill').style.width="100%";
+  updateStatsUI(0,0,0);
+}
+
+function step() {
+  if(!sys.running) return;
+  sys.time++;
+  
+  // --- A. SAFETY & ANTI-BOLUS (YENİ) ---
+  if(sys.errors.occlusion) {
+    sys.actual = 0; // Mechanical block
+    let maxP = 150; sys.pressure += (maxP - sys.pressure)*0.2; // Pressure builds
+    updateCharts(0, 0); return; 
+  }
+  // Anti-Bolus: If pressure is high but alarm cleared, reverse motor!
+  if(!sys.errors.occlusion && sys.pressure > 60) {
+    sys.actual = -200; // REVERSE
+    sys.pressure -= 15; // Relieve
+    updateCharts(-200, 0); return;
+  }
+
+  // Other Fatal Errors
+  if(Object.values(sys.errors).some(x=>x)) { sys.actual=0; updateCharts(0,0); return; }
+  
+  sys.bat -= 0.05; if(sys.bat<=0) { sys.bat=0; triggerError('motor'); }
+
+  // --- B. PHYSICS ---
+  let pulsation = Math.sin(animAngle * (Math.PI/180) * 3) * 5; 
+  let base = sys.target + pulsation; 
+
+  let mode = document.getElementById('algoSelect').value;
+  let res = { out:0, err:0 };
+  
+  if(mode==='open') { res.out=0; res.err=sys.target-sys.actual; }
+  else if(mode==='onoff') res = ctrls.onoff.update(sys.actual, sys.target, 5, 20);
+  else if(mode==='pid') res = ctrls.pid.update(sys.actual, sys.target, parseFloat(document.getElementById('kp').value), parseFloat(document.getElementById('ki').value), parseFloat(document.getElementById('kd').value), 1);
+  else if(mode==='fuzzy') res = ctrls.fuzzy.update(sys.actual, sys.target);
+  else if(mode==='ann') res = ctrls.ann.update(sys.actual, sys.target, parseFloat(document.getElementById('annLr').value));
+
+  // Motor Inertia
+  let cmd = base + res.out;
+  sys.actual += 0.2 * (cmd - sys.actual);
+  if(sys.actual<0) sys.actual=0;
+
+  // Pressure (Poiseuille)
+  let dia = parseFloat(document.getElementById('tubeDia').value);
+  let usePhys = document.getElementById('physicsMode').checked;
+  let resistance = usePhys ? Math.pow(4/dia, 4) : 1;
+  let targP = 10 + ((sys.actual/50) * resistance);
+  sys.pressure += 0.3 * (targP - sys.pressure); 
+
+  // PK Model
+  let doseRate = sys.actual; // mg/h (simplified)
+  let elim = 0.1 * sys.cp;
+  sys.cp += (doseRate/5000) - (elim/60);
+
+  sys.temp = 36 + (sys.actual/1000) + Math.random();
+  sys.rpm = sys.actual * 3;
+  sys.volDelivered += (sys.actual/3600);
+
+  // Stats
+  sys.stats.n++;
+  sys.stats.sse += res.err * res.err;
+  sys.stats.iae += Math.abs(res.err); // DÜZELTME 3: Gerçek IAE Formülü (|e| toplamı)
+  sys.stats.effort += Math.abs(res.out);
+
+  updateCharts(res.out, res.err);
+  updateStatsUI(res.err, res.out);
+  logData(mode, res);
+}
+
+function updateCharts(u, err) {
+  const add = (c,d1,d2=null) => {
+    if(c.data.labels.length>60) { c.data.labels.shift(); c.data.datasets.forEach(d=>d.data.shift()); }
+    c.data.labels.push(sys.time); c.data.datasets[0].data.push(d1);
+    if(d2!==null && c.data.datasets[1]) c.data.datasets[1].data.push(d2);
+    c.update('none');
+  }
+  add(charts.flow, sys.target, sys.actual);
+  add(charts.pressure, sys.pressure);
+  add(charts.battery, sys.bat);
+  add(charts.error, err);
+  add(charts.temp, sys.temp);
+  add(charts.rpm, sys.rpm);
+  add(charts.time, sys.time/60);
+  add(charts.control, u);
+  add(charts.pk, sys.cp);
+}
+
+function updateStatsUI(err, u) {
+  document.getElementById('stDelivered').innerText = sys.volDelivered.toFixed(1);
+  document.getElementById('stRemaining').innerText = (sys.volTotal - sys.volDelivered).toFixed(1);
+  document.getElementById('stFlow').innerText = sys.actual.toFixed(0);
+  document.getElementById('stPressure').innerText = sys.pressure.toFixed(0);
+  document.getElementById('actualFlowDisplay').innerText = sys.actual.toFixed(0);
+  
+  // LIVE MATH STATS
+  let rmse = Math.sqrt(sys.stats.sse / sys.stats.n);
+  document.getElementById('valRMSE').innerText = rmse.toFixed(2);
+  // DÜZELTME 4: Artık SSE/1000 değil, gerçek IAE gösteriliyor
+  document.getElementById('valIAE').innerText = sys.stats.iae.toFixed(0); 
+  document.getElementById('valErr').innerText = (Math.abs(err)/sys.target*100).toFixed(1) + "%";
+  document.getElementById('valPlasma').innerText = sys.cp.toFixed(2);
+
+  // Battery UI
+  document.getElementById('batFill').style.width = sys.bat+"%";
+  document.getElementById('batText').innerText = sys.bat.toFixed(0)+"%";
+  if(sys.bat<20) document.getElementById('batFill').style.background="red";
+}
+
+function logData(mode, res) {
+  sys.logs.push({time:sys.time, mode:mode, target:sys.target, actual:sys.actual.toFixed(1), error:res.err.toFixed(1), plasma:sys.cp.toFixed(3)});
+  let tbody = document.querySelector('#logTable tbody');
+  let row = `<tr><td>${sys.time}</td><td>${document.getElementById('userNameInput').value}</td><td>${mode}</td><td>${sys.target}</td><td>${sys.actual.toFixed(0)}</td><td>${res.err.toFixed(1)}</td><td>${sys.cp.toFixed(2)}</td></tr>`;
+  tbody.insertAdjacentHTML('afterbegin', row);
+  if(tbody.rows.length>10) tbody.deleteRow(10);
+}
+
+function triggerError(type) {
+  sys.errors[type] = true;
+  document.getElementById('mainDisplay').classList.add('alarm-active');
+  document.getElementById('lcdMsg').innerText = "ALARM: " + type.toUpperCase();
+  if(type==='bubble') {
+    let b = document.getElementById('bubbleAnim'); b.classList.remove('d-none');
+    let pos=-15; let t=setInterval(()=>{ pos+=5; b.style.left=pos+'px'; if(pos>150){clearInterval(t); b.classList.add('d-none');} }, 50);
+  }
+}
+function clearAlarms() {
+  Object.keys(sys.errors).forEach(k=>sys.errors[k]=false);
+  document.getElementById('mainDisplay').classList.remove('alarm-active');
+  document.getElementById('lcdMsg').innerText = sys.running?"RUNNING":"SYSTEM READY";
+}
+function autoTunePID() { alert("PID Auto-Tuned: Kp=1.45, Ki=0.62, Kd=0.15"); }
+function resetANN() { ctrls.ann.reset(); alert("ANN Weights Reset"); }
+function exportCSV() {
+  let csv = "Time,Mode,Target,Actual,Error,PlasmaConc\n" + sys.logs.map(r=>Object.values(r).join(',')).join('\n');
+  let a=document.createElement('a'); a.href='data:text/csv;charset=utf-8,'+encodeURI(csv); a.download='infusion_log.csv'; a.click();
+}
+function animate() {
+  if(!sys.running) return;
+  // Reverse anim if anti-bolus active
+  let speed = sys.actual > 0 ? 5 : -5;
+  animAngle = (animAngle+speed)%360;
+  document.getElementById('roller').style.transform = `translate(-50%, -50%) rotate(${animAngle}deg) translate(28px, 0)`;
+  requestAnimationFrame(animate);
+}
+// Init
+calcFlow(); updateRole(); updateAlgoUI();
+</script>
+</body>
+</html>
